@@ -7,6 +7,7 @@ SERVICE_NAME="akile-komari-sync"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}.timer"
 DEFAULT_INTERVAL="1h"
+DEFAULT_SYNC_SCRIPT_URL="https://raw.githubusercontent.com/Tweakl/akile-komari-sync/main/sync_akile_komari.py"
 
 need_root() {
   if [ "$(id -u)" -ne 0 ]; then
@@ -40,19 +41,16 @@ copy_or_download_sync_script() {
 
   if [ -f "./$SCRIPT_NAME" ]; then
     cp "./$SCRIPT_NAME" "$INSTALL_DIR/$SCRIPT_NAME"
-  elif [ -n "${SYNC_SCRIPT_URL:-}" ]; then
+  else
+    sync_script_url="${SYNC_SCRIPT_URL:-$DEFAULT_SYNC_SCRIPT_URL}"
     if command -v curl >/dev/null 2>&1; then
-      curl -fsSL "$SYNC_SCRIPT_URL" -o "$INSTALL_DIR/$SCRIPT_NAME"
+      curl -fsSL "$sync_script_url" -o "$INSTALL_DIR/$SCRIPT_NAME"
     elif command -v wget >/dev/null 2>&1; then
-      wget -qO "$INSTALL_DIR/$SCRIPT_NAME" "$SYNC_SCRIPT_URL"
+      wget -qO "$INSTALL_DIR/$SCRIPT_NAME" "$sync_script_url"
     else
       echo "未找到本地 $SCRIPT_NAME 时，需要安装 curl 或 wget。"
       exit 1
     fi
-  else
-    echo "找不到 ./$SCRIPT_NAME。"
-    echo "请在克隆后的仓库目录运行，或设置 SYNC_SCRIPT_URL 为脚本 raw 地址。"
-    exit 1
   fi
 
   chmod 700 "$INSTALL_DIR/$SCRIPT_NAME"
