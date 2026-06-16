@@ -1,107 +1,85 @@
-# AkileCloud to Komari Sync
+# AkileCloud 到 Komari 账单同步
 
-Sync AkileCloud server billing data to Komari nodes by matching node names.
+把 AkileCloud 服务器的账单信息同步到 Komari 节点，按“机器名/节点名”匹配。
 
-No API keys or secrets are stored in this repository. The installer prompts for
-credentials and writes them only to `/opt/akile-komari-sync/.env` on your VPS
-with `600` permissions.
+仓库里不保存任何 API Key、Secret、密码或服务器信息。安装脚本会在安装时让你输入这些信息，并只写到 VPS 本地的 `/opt/akile-komari-sync/.env`，权限为 `600`。
 
-## Features
+## 一键安装
 
-- Sync Akile `due_time` to Komari `expired_at`
-- Sync Akile `auto_renew` to Komari `auto_renewal`
-- Sync Akile `price` to Komari `price`
-- Convert free plans from Akile `price = 0` to Komari `price = -1`
-- Use RMB currency symbol by default
-- Convert Akile billing cycle to Komari days:
-  - `1` month -> `30`
-  - `3` months -> `92`
-  - `12` months -> `365`
-  - `24` months -> `730`
-- Convert Akile `flow` in GB to Komari `traffic_limit` in bytes
-- Set Komari `traffic_limit_type` to `sum`
-- Store Akile due dates as China-time wall-clock values to avoid one-day date drift
-- Run automatically with a systemd timer, default every 1 hour
-
-## Install
-
-Clone this repository on the Komari VPS, then run:
+在 Komari 面板所在 VPS 上执行：
 
 ```bash
-sudo bash install.sh
+curl -fsSL https://raw.githubusercontent.com/Tweakl/akile-komari-sync/main/install.sh -o /tmp/akile-komari-sync-install.sh && sudo bash /tmp/akile-komari-sync-install.sh
 ```
 
-The menu will show:
+脚本会先显示：
 
 ```text
-1. Install
-2. Uninstall
+1.安装
+2.卸载
 ```
 
-Choose `1` and enter values in this order:
+选择 `1` 后，按顺序输入：
 
-1. Komari URL
-2. Komari API key
+1. Komari 地址，例如 `https://example.com`
+2. Komari API Key
 3. Akile Client ID
 4. Akile Client Secret
-5. Currency, optional, defaults to RMB
-6. Sync interval, optional, defaults to `1h`
+5. 货币，默认人民币 `¥`
+6. 同步间隔，默认 `1h`
 
-Node matching is name-based. The Akile machine name and Komari node name should
-be the same.
+## 一键卸载
 
-## Publish To GitHub
+再次执行安装命令，选择 `2.卸载` 即可。
 
-From this folder:
-
-```bash
-git init
-git add .gitignore .env.example README.md install.sh sync_akile_komari.py
-git commit -m "Initial AkileCloud to Komari sync"
-git branch -M main
-git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
-git push -u origin main
-```
-
-Only the template `.env.example` is tracked. Do not commit a real `.env` file.
-
-## Uninstall
-
-Run:
-
-```bash
-sudo bash install.sh
-```
-
-Choose `2`. This removes:
+卸载会删除：
 
 - `/opt/akile-komari-sync`
 - `/etc/systemd/system/akile-komari-sync.service`
 - `/etc/systemd/system/akile-komari-sync.timer`
 
-It does not modify Komari itself.
+不会修改 Komari 本体。
 
-## Manual Run
+## 同步内容
 
-Preview only:
+- Akile `due_time` -> Komari `expired_at`
+- Akile `auto_renew` -> Komari `auto_renewal`
+- Akile `price` -> Komari `price`
+- Akile `price = 0` -> Komari `price = -1`，也就是免费
+- 默认货币为人民币 `¥`
+- Akile `flow` GB -> Komari `traffic_limit` 字节
+- Komari `traffic_limit_type` 固定为 `sum`，也就是总和
+- Akile 到期时间按北京时间墙上时间写入，避免日期早一天
 
-```bash
-cd /opt/akile-komari-sync
-set -a
-. ./.env
-set +a
-python3 sync_akile_komari.py
-```
+计费周期换算：
 
-Apply updates:
+| Akile 周期 | Komari 数值 |
+| --- | --- |
+| 1 个月 | 30 |
+| 3 个月 | 92 |
+| 12 个月 | 365 |
+| 24 个月 | 730 |
+
+## 手动执行
+
+立即同步一次：
 
 ```bash
 systemctl start akile-komari-sync.service
 ```
 
-Check schedule and logs:
+查看定时器：
 
 ```bash
 systemctl list-timers akile-komari-sync.timer --no-pager
+```
+
+查看日志：
+
+```bash
 journalctl -u akile-komari-sync.service -n 50 --no-pager
 ```
+
+## 名字匹配规则
+
+Akile 机器名和 Komari 节点名需要一致。脚本会忽略首尾空格和大小写差异，但不会做模糊匹配。
