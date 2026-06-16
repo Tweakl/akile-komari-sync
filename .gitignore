@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.codex_deps/
+.codex_deps*/
+__pycache__/
+sync_akile_komari.cpython-*.pyc
+*.pyc
+*.pyo
+*.log
